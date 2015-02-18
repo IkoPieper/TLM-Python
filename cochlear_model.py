@@ -148,8 +148,8 @@ class cochlea_model ():
                    non_linearity_type="vel", KneeVar=1.,
                    low_freq_irregularities=1, subject=1):
         self.low_freq_irregularities = low_freq_irregularities
-        self.SheraPo = np.zeros_like(sheraPo)
-        self.SheraPo = sheraPo  # can be vector or single value
+        self.SheraPo = np.zeros(sections+1)
+        self.SheraPo = self.SheraPo+sheraPo  # can be vector or single value, line changed so it can work with both single and vector
         self.KneeVar = (KneeVar)
         self.IrrPct = 0.05
         self.non_linearity = 0
@@ -215,19 +215,16 @@ class cochlea_model ():
         # PURIAM1 FILTER             ###
         #
         puria_gain = 10 ** (18. / 20.) * 2.
-        ## was the orignal Puria in 2012
-        ##second order butterworth
-        ##b, a = signal.butter(
-        ##   1, [100. / (samplerate / 2.), 3000. / (samplerate / 2)],
-        ##    'bandpass')
-        ## self.stim = signal.lfilter(b * puria_gain, a, stim)
-        
-        #below is the modified version.   
-        b1,a1=signal.butter(2,[600./(samplerate/2.)],'high') #second order butterworth
-        b2,a2=signal.butter(1,[4000.0/(samplerate/2.)],'low')
-        b=signal.convolve(b1,b2)
-        a=signal.convolve(a1,a2)
-        self.stim=signal.lfilter(b*puria_gain,a,stim) 
+#         was the orignal Puria in 2012
+#        second order butterworth
+#        b, a = signal.butter(
+#           1, [100. / (samplerate / 2.), 3000. / (samplerate / 2)],
+#            'bandpass')
+#         self.stim = signal.lfilter(b * puria_gain, a, stim)
+
+#        #below is the modified version.   
+        b, a = signal.butter(1, [600. / (samplerate / 2.), 3000. / (samplerate / 2)],'bandpass')
+        self.stim = signal.lfilter(b * puria_gain, a, stim)
 
 
     # from intializeCochlea.f90
@@ -288,18 +285,26 @@ class cochlea_model ():
         #
         # PROBE POINTS               ##
         #
-        if(self.probe_freq == 'all'):
-            self.probe_points = np.zeros(len(self.f_resonance) - 1)
-            for i in range(len(self.f_resonance) - 1):
-                self.probe_points[i] = i + 1
-            self.probe_points = (self.probe_points)
-            self.cf = (self.f_resonance[0:len(self.f_resonance)])
+        if(self.probe_freq=='all'):
+            self.probe_points=np.zeros(len(self.f_resonance)-1)
+            for i in range(len(self.f_resonance)-1):
+                self.probe_points[i]=i+1
+            self.probe_points=(self.probe_points)
+            self.cf=(self.f_resonance[1:len(self.f_resonance)])
+        elif(self.probe_freq=='half'):
+            self.probe_points=np.zeros((len(self.f_resonance)-1)/2)
+            for i in range((len(self.f_resonance)-1)/2):
+                self.probe_points[i]=i+1
+            self.probe_points=(self.probe_points)
+            self.cf=(self.f_resonance[range(1,len(self.f_resonance),2)])
         else:
-            self.probe_points = np.zeros_like(self.probe_freq)
+            self.probe_points=np.zeros(self.probe_freq.size,dtype=int)
             for i in range(len(self.probe_freq)):
-                self.probe_points[i] = np.argmin(
-                    abs(self.f_resonance - self.probe_freq[i]))
-            self.cf = self.f_resonance[self.probe_points]
+                idx_help=abs((self.f_resonance)-np.float(self.probe_freq[i]))
+                self.probe_points[i]=np.argmin(idx_help)
+            self.cf=self.f_resonance[self.probe_points]
+        self.probe_points=np.array(self.probe_points)
+
 
     def initZweig(self):
         n = self.n + 1
@@ -466,9 +471,8 @@ class cochlea_model ():
         length = np.size(self.stim) - 2
         time_length = length * self.dt
         #each probe point signal in a row
-        self.Vsolution = np.zeros([len(self.x), length + 2])
-        self.Ysolution = np.zeros([len(self.x), length + 2])
-        self.organ_of_corti_acceleration = np.zeros([len(self.x), length + 2])
+        self.Vsolution = np.zeros([len(self.probe_points), length + 2])
+        self.Ysolution = np.zeros([len(self.probe_points), length + 2])
         self.oto_emission = np.zeros(length + 2)
         self.time_axis = np.linspace(0, time_length, length)
         r = ode(TLsolver).set_integrator('dopri5', rtol=1e-2, atol=1e-13)
@@ -497,11 +501,16 @@ class cochlea_model ():
             self.Ybuffer[:, self.Zwp] = self.Ytmp
             self.ZweigImpedance()
             self.current_t = r.t
-
-            self.Vsolution[:, j] = self.Vtmp[
-                :]  # storing all probe points (Debug)
-            self.Ysolution[:, j] = self.Ytmp[:]
-            self.organ_of_corti_acceleration[:, j] = self.passive[:]
+            if(self.probe_freq=='all'):
+                self.Vsolution[:, j] = self.Vtmp[1:n]  #
+                self.Ysolution[:, j] = self.Qsol[1:n]-self.g[1:n]
+            elif(self.probe_freq=='half'):
+                self.Vsolution[:,j]=self.Vtmp[range(1,n,2)]
+                self.Ysolution[:,j]=self.Qsol[range(1,n,2)]-self.g[range(1,n,2)]
+            else:
+#                print(self.probe_points)
+                self.Vsolution[:, j] = self.Vtmp[self.probe_points]  # storing the decided probe points (Debug)
+                self.Ysolution[:, j] = self.Qsol[self.probe_points]-self.g[self.probe_points]
             self.oto_emission[j] = self.Qsol[0]
             j = j + 1
     # filter out the otoacoustic emission ####
