@@ -154,8 +154,8 @@ class cochlea_model ():
         self.IrrPct = 0.05
         self.non_linearity = 0
         self.use_Zweig = 1
-        if(Zweig_irregularities == 0):
-            self.use_Zweig = 0
+        #if(Zweig_irregularities == 0):
+        #    self.use_Zweig = 0
         if(non_linearity_type == "disp"):
             self.non_linearity = 1
         elif(non_linearity_type == "vel"):
@@ -175,10 +175,13 @@ class cochlea_model ():
         self.is_init = 1
         self.lastT = 0
         self.seed = subject  # change here the seed
-        np.random.RandomState(self.seed)
-        np.random.seed(self.seed)
-        self.Rth = 2 * (np.random.random(self.n + 1) - 0.5)
-        self.Rth_norm = 10 ** (self.Rth / 20. / self.KneeVar)
+        self.Rth = np.zeros(self.n + 1)
+        self.Rth_norm = np.ones(self.n + 1)
+        if(Zweig_irregularities):
+            np.random.RandomState(self.seed)
+            np.random.seed(self.seed)
+            self.Rth = 2 * (np.random.random(self.n + 1) - 0.5)
+            self.Rth_norm = 10 ** (self.Rth / 20. / self.KneeVar)
         lf_limit = self.ctr
         if(self.use_Zweig):
             factor = 100
@@ -198,6 +201,7 @@ class cochlea_model ():
             self.RthY2[lf_limit:n] = self.Yknee2
             self.RthV1[lf_limit:n] = self.Vknee1
             self.RthV2[lf_limit:n] = self.Vknee2
+
             self.PoleS[lf_limit:n] = self.SheraPo[lf_limit:n]
             Theta0 = np.arctan(
                 ((self.PoleE - self.PoleS) * factor) /

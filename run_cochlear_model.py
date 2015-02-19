@@ -60,9 +60,9 @@ if __name__ == "__main__":
     result = p.map(solve_one_cochlea, cochlear_list)
 
     Vresult = np.ndarray(
-        [len(result[0][0].transpose()), sectionsNo + 1, channels])
+        [len(result[0][0].transpose()), sectionsNo, channels])
     Yresult = np.ndarray(
-        [len(result[0][0].transpose()), sectionsNo + 1, channels])
+        [len(result[0][0].transpose()), sectionsNo, channels])
     Emission = np.zeros([len(result[0][0].transpose()), channels])
     Resampled_stimulus = np.zeros([len(result[0][3].transpose()), channels])
     Fc = result[0][4]
