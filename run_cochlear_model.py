@@ -63,7 +63,7 @@ if __name__ == "__main__":
         [len(result[0][0].transpose()), len(result[0][0]), channels])
     Yresult = np.ndarray(
         [len(result[0][1].transpose()), len(result[0][1]), channels])
-    Emission = np.zeros([len(result[0][0].transpose()), channels])
+    Emission = np.zeros([len(result[0][2].transpose()), channels])
     Resampled_stimulus = np.zeros([len(result[0][3].transpose()), channels])
     Fc = result[0][4]
     for i in range(channels):
